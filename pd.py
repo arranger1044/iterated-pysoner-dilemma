@@ -148,16 +148,18 @@ class IPDPairwiseCompetition(object):
         n_players = len(self._players)
         scores = numpy.zeros((n_players, n_players))
         victories = numpy.zeros(n_players, dtype=int)
+        player_instances = []
         # draws = numpy.zeros(n_players, dtype=int)
 
         for p_1 in range(n_players):
 
-            player_1 = self._players[p_1]
+            player_1 = self._players[p_1]()
             player_1.set_ingame_id(0)
+            player_instances.append(player_1)
 
             for p_2 in range(p_1, n_players):
 
-                player_2 = self._players[p_2]
+                player_2 = self._players[p_2]()
                 player_2.set_ingame_id(1)
                 #
                 # create a new 2 player ipd game
@@ -179,7 +181,10 @@ class IPDPairwiseCompetition(object):
                 #     victories[p_2] += 1
 
         if printing:
-            IPDPairwiseCompetition.visualize_stats_text(self._players, scores, victories, n_iters)
+            IPDPairwiseCompetition.visualize_stats_text(player_instances,
+                                                        scores,
+                                                        victories,
+                                                        n_iters)
 
         return scores, victories
 
@@ -353,6 +358,8 @@ class M1SPlayer(IPDPlayer):
             #
             # ask the probability to generate one decision
             coop_prob = self._cond_probs[[[a] for a in prev_actions]]
+            random_choice = numpy.random.rand()
+            # print('p', self._cond_probs, coop_prob, self._ingame_id)
             if numpy.random.rand() < coop_prob:
                 return 0
             else:
@@ -393,6 +400,8 @@ class TFTPlayer(M1SPlayer):
             self._cond_probs = self._cond_probs_0
         elif id == 1:
             self._cond_probs = self._cond_probs_1
+
+        # print(self._cond_probs, self._ingame_id)
 
 
 class STFTPlayer(TFTPlayer):
@@ -743,18 +752,18 @@ class PHBPlayer(HBPlayer):
 if __name__ == '__main__':
     #
     # creating two players
-    player_1 = WSLSPlayer()
-    player_2 = RANDPlayer(0.6)
-    player_3 = AllDPlayer()
-    player_4 = AllCPlayer()
-    player_5 = TFTPlayer()
-    player_6 = GRIMPlayer()
-    player_7 = STFTPlayer()
-    player_8 = GTFTPlayer()
-    player_9 = SMPlayer()
-    player_10 = HMPlayer()
-    player_11 = ATFTPlayer()
-    player_12 = PHBPlayer()
+    player_1 = WSLSPlayer
+    player_2 = RANDPlayer
+    player_3 = AllDPlayer
+    player_4 = AllCPlayer
+    player_5 = TFTPlayer
+    player_6 = GRIMPlayer
+    # player_7 = STFTPlayer
+    # player_8 = GTFTPlayer
+    player_9 = SMPlayer
+    player_10 = HMPlayer
+    player_11 = ATFTPlayer
+    player_12 = PHBPlayer
     # player_13 = SHBPlayer()
 
     player_list = [player_1,
@@ -763,8 +772,8 @@ if __name__ == '__main__':
                    player_4,
                    player_5,
                    player_6,
-                   player_7,
-                   player_8,
+                   # player_7,
+                   # player_8,
                    player_9,
                    player_10,
                    player_11,
