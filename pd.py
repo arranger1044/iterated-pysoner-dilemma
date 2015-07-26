@@ -213,7 +213,7 @@ class IPDPairwiseCompetition(object):
         print('Player:\tType:\tScore:\t#Wins\t#Draws\t#Losses:')
         for i, p in enumerate(players):
             print('{0}\t{1}\t{2:.4f}\t[{3}\t{4}\t{5}]'.format(p.id,
-                                                              p._type,
+                                                              p._type.rjust(7),
                                                               scores[i, :].sum() /
                                                               (n_players * n_iters),
                                                               victories[i, 0],
@@ -271,7 +271,8 @@ class IPDPlayer(metaclass=ABCMeta):
         """
         WRITEME
         """
-        return "player #{0} ({1})".format(self.id, self._type)
+        type_str = ('({})'.format(self._type)).rjust(6)
+        return "player #{0} {1}".format(str(self.id).ljust(4), type_str)
 
 
 class AllCPlayer(IPDPlayer):
@@ -463,6 +464,31 @@ class GTFTPlayer(TFTPlayer):
 
         self._cond_probs_1[0, :] = 1.
         self._cond_probs_0[:, 0] = 1.
+
+
+class RTFTPlayer(TFTPlayer):
+
+    """
+    Reverse Tit-for-Tat
+
+    Defects on the first move, then plays the reverse of the opponent’s last move
+
+    """
+
+    def __init__(self):
+        """
+        Just calling M1SPlayer constructor with right parameters
+        """
+        #
+        # this code is ugly, I need to create the index first
+        rtft_cond_probs = None
+        M1SPlayer.__init__(self, rtft_cond_probs, 1, 'RTFT')
+
+        self._cond_probs_0 = numpy.zeros((2, 2))
+        self._cond_probs_1 = numpy.zeros((2, 2))
+
+        self._cond_probs_1[1, :] = 1.
+        self._cond_probs_0[:, 1] = 1.
 
 
 class ATFTPlayer(TFTPlayer):
@@ -779,6 +805,7 @@ if __name__ == '__main__':
     player_10 = HMPlayer
     player_11 = ATFTPlayer
     player_12 = PHBPlayer
+    player_13 = RTFTPlayer
     # player_13 = SHBPlayer()
 
     player_list = [player_1,
@@ -793,6 +820,7 @@ if __name__ == '__main__':
                    player_10,
                    player_11,
                    player_12,
+                   player_13,
                    # player_13
                    ]
 
