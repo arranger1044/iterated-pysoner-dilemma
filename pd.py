@@ -151,18 +151,18 @@ class IPDPairwiseCompetition(object):
         #
         # an array for #victories, #draws, #losses
         victories = numpy.zeros((n_players, 3), dtype=int)
-        player_instances = []
         # draws = numpy.zeros(n_players, dtype=int)
 
         for p_1 in range(n_players):
 
-            player_1 = self._players[p_1]()
+            player_1 = self._players[p_1]
             player_1.set_ingame_id(0)
-            player_instances.append(player_1)
 
-            for p_2 in range(p_1, n_players):
+            #
+            # not playing against itself
+            for p_2 in range(p_1 + 1, n_players):
 
-                player_2 = self._players[p_2]()
+                player_2 = self._players[p_2]
                 player_2.set_ingame_id(1)
 
                 n_games += 1
@@ -184,17 +184,16 @@ class IPDPairwiseCompetition(object):
                 p_1_victories = (rewards[0, :] > rewards[1, :]).sum()
                 p_2_victories = (rewards[0, :] < rewards[1, :]).sum()
 
-                if p_1 != p_2:
-                    victories[p_1, 1] += n_draws
-                    victories[p_2, 1] += n_draws
-                    victories[p_1, 0] += p_1_victories
-                    victories[p_2, 0] += p_2_victories
-                    victories[p_1, 2] += p_2_victories
-                    victories[p_2, 2] += p_1_victories
+                victories[p_1, 1] += n_draws
+                victories[p_2, 1] += n_draws
+                victories[p_1, 0] += p_1_victories
+                victories[p_2, 0] += p_2_victories
+                victories[p_1, 2] += p_2_victories
+                victories[p_2, 2] += p_1_victories
                 # else:
 
         if printing:
-            IPDPairwiseCompetition.visualize_stats_text(player_instances,
+            IPDPairwiseCompetition.visualize_stats_text(self._players,
                                                         scores,
                                                         victories,
                                                         n_iters)
@@ -220,6 +219,73 @@ class IPDPairwiseCompetition(object):
                                                               victories[i, 0],
                                                               victories[i, 1],
                                                               victories[i, 2]))
+
+
+class IDPEvolutionarySimulation(object):
+
+    """
+    Simulating evolving generations of a population by playing
+    several times a simulation of IDP between individuals of that population
+    """
+
+    @classmethod
+    def create_fixed_generation(cls, player_types, population_per_type):
+        """
+        player_types: an array of N player classes 
+        population_per_type: how many instances per type (S)
+
+        output: an array of size S*N containing instantiated players from sampled types
+        """
+
+        #
+        # instantiating a fixed number of players for each type
+        sampled_players = []
+        for player_type in player_types:
+            for i in range(population_per_type):
+                sampled_players.append(player_type())
+
+        assert len(sampled_players) == (population_per_type * len(player_types))
+
+        return sampled_players
+
+    @classmethod
+    def create_generation(cls, player_types, player_likelihoods, population):
+        """
+        player_types: an array of N player classes 
+        player_likelihoods: an array of N probabilities (sum to 1)
+        population: the size of the output array (S)
+
+        output: an array of size S containing instantiated players from sampled types
+        """
+        #
+        # random sample, according to a proportion, from the types
+        sampled_types = numpy.random.choice(player_types,
+                                            size=population,
+                                            p=player_likelihoods)
+
+        #
+        # now instantiating them
+        sampled_players = []
+        for player_type in sampled_types:
+            sampled_players.append(player_type())
+
+        assert len(sampled_players) == population
+        return sampled_players
+
+    def __init__(self,
+                 player_types,
+                 payoff,
+                 population=100,
+                 n_generations=100,
+                 obs_noise=0.0):
+        """
+        WRITEME
+        """
+
+    def simulate(self, n_generations=None, printing=False):
+        """
+        WRITEME
+        """
 
 from abc import ABCMeta
 from abc import abstractmethod
@@ -842,43 +908,23 @@ class PDDCPlayer(PERPlayer):
 #         #                                                                                 ))
 #         return numpy.argmax(strategy)
 
-if __name__ == '__main__':
-    #
-    # creating two players
-    player_1 = WSLSPlayer
-    player_2 = RANDPlayer
-    player_3 = AllDPlayer
-    player_4 = AllCPlayer
-    player_5 = TFTPlayer
-    player_6 = GRIMPlayer
-    player_7 = STFTPlayer
-    player_8 = GTFTPlayer
-    player_9 = SMPlayer
-    player_10 = HMPlayer
-    player_11 = ATFTPlayer
-    player_12 = PHBPlayer
-    player_13 = RTFTPlayer
-    # player_13 = SHBPlayer()
-    player_14 = PCCDPlayer
-    player_15 = PDDCPlayer
+PLAYER_TYPES = [WSLSPlayer,
+                RANDPlayer,
+                AllDPlayer,
+                AllCPlayer,
+                TFTPlayer,
+                GRIMPlayer,
+                STFTPlayer,
+                GTFTPlayer,
+                SMPlayer,
+                HMPlayer,
+                ATFTPlayer,
+                PHBPlayer,
+                RTFTPlayer,
+                PCCDPlayer,
+                PDDCPlayer]
 
-    player_list = [player_1,
-                   player_2,
-                   player_3,
-                   player_4,
-                   player_5,
-                   player_6,
-                   player_7,
-                   player_8,
-                   player_9,
-                   player_10,
-                   player_11,
-                   player_12,
-                   player_13,
-                   # player_13
-                   player_14,
-                   player_15
-                   ]
+if __name__ == '__main__':
 
     #
     # creating the game
@@ -888,6 +934,10 @@ if __name__ == '__main__':
     P = 1.
     matrix_payoff = numpy.array([[[R, R], [S, T]], [[T, S], [P, P]]])
     print('Payoff Matrix\n', matrix_payoff)
+
+    #
+    # creating one playerr for each type
+    player_list = IDPEvolutionarySimulation.create_fixed_generation(PLAYER_TYPES, 1)
 
     #
     # simulation
