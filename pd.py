@@ -134,6 +134,7 @@ class IPDPairwiseCompetition(object):
 
         self._noise = obs_noise
         # self.curr_iter = 0
+        self._eps = 1e-5
 
     def simulate(self, n_iters=None, printing=True):
         """
@@ -147,7 +148,9 @@ class IPDPairwiseCompetition(object):
         # allocating stats matrix
         n_players = len(self._players)
         scores = numpy.zeros((n_players, n_players))
-        victories = numpy.zeros(n_players, dtype=int)
+        #
+        # an array for #victories, #draws, #losses
+        victories = numpy.zeros((n_players, 3), dtype=int)
         player_instances = []
         # draws = numpy.zeros(n_players, dtype=int)
 
@@ -172,8 +175,17 @@ class IPDPairwiseCompetition(object):
                 scores[p_1, p_2] = rewards[0, :].sum()
                 scores[p_2, p_1] = rewards[1, :].sum()
 
-                victories[p_1] = (rewards[0, :] > rewards[1, :]).sum()
-                victories[p_2] = (rewards[0, :] < rewards[1, :]).sum()
+                n_draws = (numpy.abs(rewards[0, :] - rewards[1, :]) < self._eps).sum()
+                p_1_victories = (rewards[0, :] > rewards[1, :]).sum()
+                p_2_victories = (rewards[0, :] < rewards[1, :]).sum()
+                victories[p_1, 1] += n_draws
+                victories[p_2, 1] += n_draws
+                victories[p_1, 0] += p_1_victories
+                victories[p_2, 0] += p_2_victories
+                victories[p_1, 2] += victories[p_2, 0]
+                victories[p_2, 2] += victories[p_1, 0]
+                # victories[p_1] = (rewards[0, :] > rewards[1, :]).sum()
+                # victories[p_2] = (rewards[0, :] < rewards[1, :]).sum()
 
                 # if scores[p_1, p_2] > scores[p_2, p_1]:
                 #     victories[p_1] += 1
@@ -198,12 +210,15 @@ class IPDPairwiseCompetition(object):
         print('Score matrix')
         print(scores)
         print('Final scores')
-        print('Player:\tType:\tScore:\tVictories:')
+        print('Player:\tType:\tScore:\t#Wins\t#Draws\t#Losses:')
         for i, p in enumerate(players):
-            print('{0}\t{1}\t{2:.4f}\t{3}'.format(p.id,
-                                                  p._type,
-                                                  scores[i, :].sum() / (n_players * n_iters),
-                                                  victories[i]))
+            print('{0}\t{1}\t{2:.4f}\t[{3}\t{4}\t{5}]'.format(p.id,
+                                                              p._type,
+                                                              scores[i, :].sum() /
+                                                              (n_players * n_iters),
+                                                              victories[i, 0],
+                                                              victories[i, 1],
+                                                              victories[i, 2]))
 
 from abc import ABCMeta
 from abc import abstractmethod
@@ -758,8 +773,8 @@ if __name__ == '__main__':
     player_4 = AllCPlayer
     player_5 = TFTPlayer
     player_6 = GRIMPlayer
-    # player_7 = STFTPlayer
-    # player_8 = GTFTPlayer
+    player_7 = STFTPlayer
+    player_8 = GTFTPlayer
     player_9 = SMPlayer
     player_10 = HMPlayer
     player_11 = ATFTPlayer
@@ -772,8 +787,8 @@ if __name__ == '__main__':
                    player_4,
                    player_5,
                    player_6,
-                   # player_7,
-                   # player_8,
+                   player_7,
+                   player_8,
                    player_9,
                    player_10,
                    player_11,
