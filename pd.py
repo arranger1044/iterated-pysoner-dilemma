@@ -749,6 +749,57 @@ class PHBPlayer(HBPlayer):
         return numpy.argmax(strategy)
 
 
+class PERPlayer(IPDPlayer):
+
+    """
+    Periodic Player
+
+    Plays a single pattern with periodicity
+    """
+
+    def __init__(self, pattern, player_name=None):
+        """
+        Pattern is a binary array
+        """
+
+        if player_name is None:
+            player_name = 'PER'
+
+        IPDPlayer.__init__(self, player_name)
+
+        self._pattern = pattern
+        self._pattern_length = len(pattern)
+        self._pos = 0
+
+    def act(self, game, iter):
+        return self._pattern[iter % self._pattern_length]
+
+    def set_ingame_id(self, id):
+        IPDPlayer.set_ingame_id(self, id)
+        self._pos = 0
+
+
+class PCCDPlayer(PERPlayer):
+
+    """
+    Periodic Player with pattern CCD
+    """
+
+    def __init__(self):
+        ccd_pattern = numpy.array([0, 0, 1])
+        PERPlayer.__init__(self, ccd_pattern, 'PCCD')
+
+
+class PDDCPlayer(PERPlayer):
+
+    """
+    Periodic Plauer with pattern DDC
+    """
+
+    def __init__(self):
+        ddc_pattern = numpy.array([1, 1, 0])
+        PERPlayer.__init__(self, ddc_pattern, 'PDDC')
+
 # class SHBPlayer(PHBPlayer):
 
 #     """
@@ -808,6 +859,8 @@ if __name__ == '__main__':
     player_12 = PHBPlayer
     player_13 = RTFTPlayer
     # player_13 = SHBPlayer()
+    player_14 = PCCDPlayer
+    player_15 = PDDCPlayer
 
     player_list = [player_1,
                    player_2,
@@ -823,6 +876,8 @@ if __name__ == '__main__':
                    player_12,
                    player_13,
                    # player_13
+                   player_14,
+                   player_15
                    ]
 
     #
