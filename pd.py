@@ -412,6 +412,26 @@ class IPDEvolutionarySimulation(object):
                 counts[p._type] = 1
         return counts
 
+    @classmethod
+    def plot_simulation(cls, frame):
+
+        #
+        # define a dictionary of styles
+        player_style_dict = {'AllC': '-', 'AllD': '-', 'PCCD': '-', 'PDDC': '-',
+                             'RAND': ':', 'GRIM': ':',
+                             'TFT': '--', 'ATFT': '--', 'STFT': '--', 'GTFT': '--',
+                             'RTFT': '--', 'WSLS': '-.', 'SM': '-.', 'HM': '-.', 'PHB': '-.'}
+        columns = list(frame.columns.values)
+        sns.color_palette("husl", len(columns))
+
+        line_handles = []
+        for c in columns:
+            ax, = plt.plot(frame[c], linestyle=player_style_dict[c], label=c,
+                           linewidth=4)
+            line_handles.append(ax)
+        plt.legend(handles=line_handles, loc=2)
+        plt.show()
+
     def _count_to_frame(self, counts):
         """
         WRITEME
@@ -1123,5 +1143,11 @@ if __name__ == '__main__':
                                           population=100,
                                           n_generations=50)
     frame = evol_game.simulate(player_list, printing=True)
-    frame.plot()
-    plt.show()
+    line_styles = ['-', '--',  ':', ':', '-', '--',
+                   ':', ':', '-', '--',  ':', ':', '-',
+                   '--',  ':', ':', '-', '--',  ':']
+    IPDEvolutionarySimulation.plot_simulation(frame)
+
+    # ax = frame.plot(color=sns.color_palette("hls", 15))
+    # ax.lines[0].set_linestyle('--')
+    # plt.show()
