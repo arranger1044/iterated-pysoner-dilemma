@@ -167,7 +167,8 @@ class IPDPairwiseCompetition(object):
                 player_2.set_ingame_id(1)
 
                 n_games += 1
-                print('\n\ngame #{}:'.format(n_games), end='')
+                if printing:
+                    print('\n\ngame #{}:'.format(n_games), end='')
 
                 #
                 # create a new 2 player ipd game
@@ -203,8 +204,8 @@ class IPDPairwiseCompetition(object):
         # create a pandas dataframe for later reuse
         results = IPDPairwiseCompetition.scores_to_frame(self._players, scores, victories)
 
-        print('results')
-        print(results)
+        # print('results')
+        # print(results)
 
         return results
 
@@ -257,7 +258,7 @@ class IPDPairwiseCompetition(object):
                                                               victories[i, 2]))
 
 
-class IDPEvolutionarySimulation(object):
+class IPDEvolutionarySimulation(object):
 
     """
     Simulating evolving generations of a population by playing
@@ -267,7 +268,7 @@ class IDPEvolutionarySimulation(object):
     @classmethod
     def create_fixed_generation(cls, player_types, population_per_type):
         """
-        player_types: an array of N player classes 
+        player_types: an array of N player classes
         population_per_type: how many instances per type (S)
 
         output: an array of size S*N containing instantiated players from sampled types
@@ -276,26 +277,27 @@ class IDPEvolutionarySimulation(object):
         #
         # instantiating a fixed number of players for each type
         sampled_players = []
-        for player_type in player_types:
+        for player_type, player_class in player_types.items():
             for i in range(population_per_type):
-                sampled_players.append(player_type())
+                sampled_players.append(player_class())
 
         assert len(sampled_players) == (population_per_type * len(player_types))
 
         return sampled_players
 
     @classmethod
-    def create_generation(cls, player_types, player_likelihoods, population):
+    def create_generation_numpy_old(cls, player_types, player_likelihoods, population):
         """
-        player_types: an array of N player classes 
+        player_types: an array of N player classes
         player_likelihoods: an array of N probabilities (sum to 1)
         population: the size of the output array (S)
 
         output: an array of size S containing instantiated players from sampled types
         """
+        print(player_types.values())
         #
         # random sample, according to a proportion, from the types
-        sampled_types = numpy.random.choice(player_types,
+        sampled_types = numpy.random.choice(list(player_types.values()),
                                             size=population,
                                             p=player_likelihoods)
 
@@ -308,12 +310,84 @@ class IDPEvolutionarySimulation(object):
         assert len(sampled_players) == population
         return sampled_players
 
+    @classmethod
+    def create_generation_numpy(cls, player_types, player_likelihoods, population):
+        """
+        player_types: an array of N player classes
+        player_likelihoods: an array of N probabilities (sum to 1)
+        population: the size of the output array (S)
+
+        output: an array of size S containing instantiated players from sampled types
+        """
+        print(player_types.values())
+        #
+        # random sample, according to a proportion, from the types
+        sampled_types = numpy.random.choice(player_likelihoods.index.tolist(),
+                                            size=population,
+                                            p=player_likelihoods.values)
+
+        #
+        # now instantiating them
+        sampled_players = []
+        for p_type in sampled_types:
+            sampled_players.append(player_types[p_type]())
+
+        assert len(sampled_players) == population
+        return sampled_players
+
+    @classmethod
+    def create_generation(cls, player_types, player_likelihoods, population):
+        """
+        player_types: an array of N player classes
+        player_likelihoods: a Series of N probabilities (sum to 1)
+        population: the size of the output array (S)
+
+        output: an array of size S containing instantiated players from sampled types
+        """
+        #
+        # from likelihoods to frequencies
+
+        freqs = {}
+        count = 0
+        for index, row in player_likelihoods.iteritems():
+
+            row_count = int(row * population)
+            if count + row_count > population:
+                row_count = population - count
+            count += row_count
+
+            freqs[index] = row_count
+
+        #
+        # remaining ones? assign them random
+        if count < population:
+            rem_count = population - count
+            for _c in range(rem_count):
+                rand_type = numpy.random.choice(list(freqs.keys()))
+                freqs[rand_type] += 1
+
+        sampled_players = []
+        for p_type, count in freqs.items():
+            for i in range(count):
+                sampled_players.append(player_types[p_type]())
+
+        # #
+        # # now instantiating them
+        # sampled_players = []
+        # for player_type in sampled_types:
+        #     sampled_players.append(player_type
+        #                           ())
+
+        assert len(sampled_players) == population
+        return sampled_players
+
     def __init__(self,
                  player_types,
                  payoffs,
                  n_iters,
                  population=100,
                  n_generations=100,
+                 average=False,
                  obs_noise=0.0):
         """
         WRITEME
@@ -324,6 +398,7 @@ class IDPEvolutionarySimulation(object):
         self._n_generations = n_generations
         self._n_iters = n_iters
         self._noise = obs_noise
+        self._average = average
 
     def simulate(self, first_generation, n_generations=None, printing=False):
         """
@@ -349,17 +424,42 @@ class IDPEvolutionarySimulation(object):
                                                    self._noise)
             #
             # simulate it
-            scores, victories = pairwise_game.simulate(printing=False)
+            sim_results = pairwise_game.simulate(printing=False)
+            # print('sim res')
+            # print(sim_results)
 
             #
             # aggregate by player type
+            agg_function = numpy.sum
+            if self._average:
+                agg_function = numpy.mean
+            agg_results = sim_results.groupby('types').aggregate(agg_function)
+            # print('agg res')
+            # print(agg_results)
 
             #
             # computes the likelihoods on the scores
-            likelihoods = scores.sum(axis=1)
-            likelihoods /= likelihoods.sum()
+            likelihoods = agg_results['scores'] / agg_results['scores'].sum()
             print('likelihoods:', likelihoods)
 
+            #
+            # create a new generation
+            current_types_set = set([p._type for p in current_generation])
+            current_types = {p_type: p_class for p_type, p_class in self._player_types.items() if
+                             p_type in current_types_set}
+            current_generation =\
+                IPDEvolutionarySimulation.create_generation(current_types,
+                                                            likelihoods,
+                                                            self._population)
+
+            counts = {}
+            for p in current_generation:
+                if p._type in counts:
+                    counts[p._type] += 1
+                else:
+                    counts[p._type] = 1
+
+            print(counts)
 
 from abc import ABCMeta
 from abc import abstractmethod
@@ -982,21 +1082,21 @@ class PDDCPlayer(PERPlayer):
 #         #                                                                                 ))
 #         return numpy.argmax(strategy)
 
-PLAYER_TYPES = [WSLSPlayer,
-                RANDPlayer,
-                AllDPlayer,
-                AllCPlayer,
-                TFTPlayer,
-                GRIMPlayer,
-                STFTPlayer,
-                GTFTPlayer,
-                SMPlayer,
-                HMPlayer,
-                ATFTPlayer,
-                PHBPlayer,
-                RTFTPlayer,
-                PCCDPlayer,
-                PDDCPlayer]
+PLAYER_TYPES = {'WSLS': WSLSPlayer,
+                'RAND': RANDPlayer,
+                'AllD': AllDPlayer,
+                'AllC': AllCPlayer,
+                'TFT': TFTPlayer,
+                'GRIM': GRIMPlayer,
+                'STFT': STFTPlayer,
+                'GTFT': GTFTPlayer,
+                'SM': SMPlayer,
+                'HM': HMPlayer,
+                'ATFT': ATFTPlayer,
+                'PHB': PHBPlayer,
+                'RTFT': RTFTPlayer,
+                'PCCD': PCCDPlayer,
+                'PDDC': PDDCPlayer}
 
 if __name__ == '__main__':
 
@@ -1011,10 +1111,19 @@ if __name__ == '__main__':
 
     #
     # creating one playerr for each type
-    player_list = IDPEvolutionarySimulation.create_fixed_generation(PLAYER_TYPES, 1)
+    player_list = IPDEvolutionarySimulation.create_fixed_generation(PLAYER_TYPES, 20)
 
     #
     # simulation
     n_iters = 20
-    ipd_game = IPDPairwiseCompetition(player_list, matrix_payoff, n_iters)
-    ipd_game.simulate(printing=True)
+    # ipd_game = IPDPairwiseCompetition(player_list, matrix_payoff, n_iters)
+    # ipd_game.simulate(printing=False)
+
+    #
+    # evolution simulation
+    evol_game = IPDEvolutionarySimulation(PLAYER_TYPES,
+                                          matrix_payoff,
+                                          n_iters,
+                                          population=300,
+                                          n_generations=100)
+    evol_game.simulate(player_list, printing=True)
