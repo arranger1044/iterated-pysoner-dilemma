@@ -85,7 +85,6 @@ class IPDGame(object):
             for i in range(n_iters):
                 print(IPDGame.repr_action(actions[p, i]), end='')
             print('  [{}]'.format(format(rewards[p].sum())), end='')
-        print('\n')
 
     def simulate(self,
                  iters=None,
@@ -147,6 +146,7 @@ class IPDPairwiseCompetition(object):
         #
         # allocating stats matrix
         n_players = len(self._players)
+        n_games = 0
         scores = numpy.zeros((n_players, n_players))
         #
         # an array for #victories, #draws, #losses
@@ -164,11 +164,16 @@ class IPDPairwiseCompetition(object):
 
                 player_2 = self._players[p_2]()
                 player_2.set_ingame_id(1)
+
+                n_games += 1
+                print('\n\ngame #{}:'.format(n_games), end='')
+
                 #
                 # create a new 2 player ipd game
                 game = IPDGame([player_1, player_2],
                                self._payoffs,
                                self._noise)
+
                 #
                 # collecting stats
                 actions, rewards = game.simulate(n_iters, printing)
@@ -178,19 +183,15 @@ class IPDPairwiseCompetition(object):
                 n_draws = (numpy.abs(rewards[0, :] - rewards[1, :]) < self._eps).sum()
                 p_1_victories = (rewards[0, :] > rewards[1, :]).sum()
                 p_2_victories = (rewards[0, :] < rewards[1, :]).sum()
-                victories[p_1, 1] += n_draws
-                victories[p_2, 1] += n_draws
-                victories[p_1, 0] += p_1_victories
-                victories[p_2, 0] += p_2_victories
-                victories[p_1, 2] += victories[p_2, 0]
-                victories[p_2, 2] += victories[p_1, 0]
-                # victories[p_1] = (rewards[0, :] > rewards[1, :]).sum()
-                # victories[p_2] = (rewards[0, :] < rewards[1, :]).sum()
 
-                # if scores[p_1, p_2] > scores[p_2, p_1]:
-                #     victories[p_1] += 1
-                # elif scores[p_1, p_2] < scores[p_2, p_1]:
-                #     victories[p_2] += 1
+                if p_1 != p_2:
+                    victories[p_1, 1] += n_draws
+                    victories[p_2, 1] += n_draws
+                    victories[p_1, 0] += p_1_victories
+                    victories[p_2, 0] += p_2_victories
+                    victories[p_1, 2] += p_2_victories
+                    victories[p_2, 2] += p_1_victories
+                # else:
 
         if printing:
             IPDPairwiseCompetition.visualize_stats_text(player_instances,
@@ -207,13 +208,13 @@ class IPDPairwiseCompetition(object):
         assert scores.shape[0] == n_players
         assert len(victories) == n_players
 
-        print('Score matrix')
+        print('\n\nScore matrix')
         print(scores)
-        print('Final scores')
+        print('\nFinal scores')
         print('Player:\tType:\tScore:\t#Wins\t#Draws\t#Losses:')
         for i, p in enumerate(players):
             print('{0}\t{1}\t{2:.4f}\t[{3}\t{4}\t{5}]'.format(p.id,
-                                                              p._type.rjust(7),
+                                                              p._type.rjust(5),
                                                               scores[i, :].sum() /
                                                               (n_players * n_iters),
                                                               victories[i, 0],
