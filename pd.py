@@ -1,4 +1,5 @@
 import numpy
+import pandas
 
 
 class IPDGame(object):
@@ -198,7 +199,42 @@ class IPDPairwiseCompetition(object):
                                                         victories,
                                                         n_iters)
 
-        return scores, victories
+        #
+        # create a pandas dataframe for later reuse
+        results = IPDPairwiseCompetition.scores_to_frame(self._players, scores, victories)
+
+        print('results')
+        print(results)
+
+        return results
+
+    @classmethod
+    def scores_to_frame(cls, players, scores, victories):
+        """
+        WRITEME
+        """
+        #
+        # creating columns
+        ids = [p.id for p in players]
+        p_types = pandas.Series({p.id: p._type for p in players})
+        p_scores = pandas.Series(scores.sum(axis=1), index=ids)
+        p_wins = pandas.Series(victories[:, 0], index=ids)
+        p_draws = pandas.Series(victories[:, 1], index=ids)
+        p_losses = pandas.Series(victories[:, 2], index=ids)
+
+        #
+        # composing table
+        frame = pandas.DataFrame({'types': p_types,
+                                  'scores': p_scores,
+                                  'wins': p_wins,
+                                  'draws': p_draws,
+                                  'losses': p_losses})
+
+        #
+        # imposing column order
+        frame = frame[['types', 'scores', 'wins', 'draws', 'losses']]
+
+        return frame
 
     @classmethod
     def visualize_stats_text(cls, players, scores, victories, n_iters):
@@ -274,18 +310,56 @@ class IDPEvolutionarySimulation(object):
 
     def __init__(self,
                  player_types,
-                 payoff,
+                 payoffs,
+                 n_iters,
                  population=100,
                  n_generations=100,
                  obs_noise=0.0):
         """
         WRITEME
         """
+        self._player_types = player_types
+        self._payoffs = payoffs
+        self._population = population
+        self._n_generations = n_generations
+        self._n_iters = n_iters
+        self._noise = obs_noise
 
-    def simulate(self, n_generations=None, printing=False):
+    def simulate(self, first_generation, n_generations=None, printing=False):
         """
         WRITEME
         """
+        #
+        # simulating generations
+        if n_generations is None:
+            n_generations = self._n_generations
+
+        #
+        # storing the generation on which starting the simulation
+        current_generation = first_generation
+
+        for g in range(n_generations):
+
+            print('### generation {0}/{1}'.format(g + 1, n_generations))
+            #
+            # creating a pairwise game simulation
+            pairwise_game = IPDPairwiseCompetition(current_generation,
+                                                   self._payoffs,
+                                                   self._n_iters,
+                                                   self._noise)
+            #
+            # simulate it
+            scores, victories = pairwise_game.simulate(printing=False)
+
+            #
+            # aggregate by player type
+
+            #
+            # computes the likelihoods on the scores
+            likelihoods = scores.sum(axis=1)
+            likelihoods /= likelihoods.sum()
+            print('likelihoods:', likelihoods)
+
 
 from abc import ABCMeta
 from abc import abstractmethod
