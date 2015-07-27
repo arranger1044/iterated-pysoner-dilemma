@@ -10,6 +10,7 @@ class IPDPlayer{
 class IPDGame{
     -_payoffs
     -_players
+    -_noise
     +actions
     +rewards
     --

@@ -4,6 +4,7 @@ class IPDPlayer{
     +id
     -_type
     -_ingame_id
+    -_noise
     --
     +act(game, iter)
 }

@@ -44,7 +44,20 @@ class IPDGame(object):
         Return the actions for the previous iterates
         """
         # print(iter_start, iter_end)
-        return self.actions[:, iter_start:iter_end]
+
+        #
+        # adding a corrupted version
+
+        corrupted_actions = numpy.random.binomial(1, self._noise, self.actions.shape).astype(bool)
+        # print('corr', corrupted_actions)
+        real_actions = self.actions.astype(bool)
+        # print('real', real_actions)
+        observable_actions = numpy.logical_xor(corrupted_actions, real_actions)
+
+        # print('xor', observable_actions)
+        # return self.actions[:, iter_start:iter_end]
+
+        return observable_actions[:, iter_start:iter_end]
 
     def _get_payoffs(self, actions):
         """
@@ -1132,21 +1145,21 @@ if __name__ == '__main__':
     #
     # simulation
     n_iters = 20
-    ipd_game = IPDPairwiseCompetition(player_list, matrix_payoff, n_iters)
+    ipd_game = IPDPairwiseCompetition(player_list, matrix_payoff, n_iters, obs_noise=0.0)
     ipd_game.simulate(printing=True)
 
     #
     # evolution simulation
-    evol_game = IPDEvolutionarySimulation(PLAYER_TYPES,
-                                          matrix_payoff,
-                                          n_iters,
-                                          population=100,
-                                          n_generations=50)
-    frame = evol_game.simulate(player_list, printing=True)
-    line_styles = ['-', '--',  ':', ':', '-', '--',
-                   ':', ':', '-', '--',  ':', ':', '-',
-                   '--',  ':', ':', '-', '--',  ':']
-    IPDEvolutionarySimulation.plot_simulation(frame)
+    # evol_game = IPDEvolutionarySimulation(PLAYER_TYPES,
+    #                                       matrix_payoff,
+    #                                       n_iters,
+    #                                       population=100,
+    #                                       n_generations=50)
+    # frame = evol_game.simulate(player_list, printing=True)
+    # line_styles = ['-', '--',  ':', ':', '-', '--',
+    #                ':', ':', '-', '--',  ':', ':', '-',
+    #                '--',  ':', ':', '-', '--',  ':']
+    # IPDEvolutionarySimulation.plot_simulation(frame)
 
     # ax = frame.plot(color=sns.color_palette("hls", 15))
     # ax.lines[0].set_linestyle('--')
